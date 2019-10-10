@@ -26,7 +26,7 @@ class _HomeState extends State<Home> {
   final realController = TextEditingController();
   final dolarController = TextEditingController();
   final euroController = TextEditingController();
-  final fmt = NumberFormat('#,##0,00', 'pt_BR');
+  final fmt = NumberFormat('#,##0.00', 'pt_BR');
 
   double dolar;
   double euro;
@@ -42,56 +42,114 @@ class _HomeState extends State<Home> {
     http.Response response = await http.get(request);
     return json.decode(response.body);
   }
+  void realChanged(String texto){
+    double real = fmt.parse(texto);
+    dolarController.text = fmt.format(real/dolar);
+    euroController.text = fmt.format(real/euro);
+  }
+  void dolarChanged(String texto){
+    double valorEmReal = fmt.parse(texto) * dolar;
+    realController.text = fmt.format(valorEmReal);
+    euroController.text = fmt.format(valorEmReal/euro);
+  }
+  void euroChanged(String texto){
+    double valorEmReal = fmt.parse(texto) * euro;
+    realController.text = fmt.format(valorEmReal);
+    dolarController.text = fmt.format(valorEmReal/dolar);
+  }
   Widget buildTextField(String label, String prefixo,
-      TextEditingController controller, Function function){
+      TextEditingController controller, Function Converter){
     return TextField(
     controller: controller,
     decoration: InputDecoration(
-      labelText: prefixo,
+      labelText: label,
+      prefixText: prefixo,
       border: OutlineInputBorder(),
       labelStyle: TextStyle(color: Colors.amber)
     ),
       style: TextStyle(color: Colors.amber, fontSize: 25),
-      onChanged: function,
+      onChanged: Converter,
       keyboardType: TextInputType.numberWithOptions(decimal: true),
       );
   }
-
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: FutureBuilder<Map>(
-        future: dados,
-        builder: (context, snapshot){
-          switch(snapshot.connectionState){
-            case ConnectionState.none:
-            case ConnectionState.waiting:
-           return Center(child: Text('Carregando dados...'));
-            default:
-              if(snapshot.hasError) {
-                return Center(child: Text('Carregando dados...'));
-              }else{
-                dolar = snapshot.data['results']['currencies']['USD']['buy'];
-                euro = snapshot.data['results']['currencies']['EUR']['buy'];
+    return GestureDetector(
+      onTap: (){
+        FocusScope.of(context).requestFocus(FocusNode());
+      },
+      child: SafeArea(
+        top: false,
+        bottom: false,
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          appBar: PreferredSize(
+            preferredSize: Size.fromHeight (250 - 0.2  * MediaQuery.of(context).size.width),
+            child: Stack(
+              fit: StackFit.expand,
+              children:[
+              Container(
+                height: 200,
+                  child: Image.asset('imagens/money.jpeg', fit: BoxFit.cover)
+              ),
+              Positioned(
+                left: 16,
+                bottom: 16,
+                child: Text('Trading View',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 40,
+                      letterSpacing: 1.2,
+                      shadows: [
+                        BoxShadow(color: Colors.white38, offset: Offset(3, 3))
+                      ]
+                    )
+                ),
+              )
 
-                return SingleChildScrollView(
-                 padding: EdgeInsets.all(10),
-                 child: Column(
-                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                   children: <Widget>[
-                     Divider(),
-                     buildTextField('Reais','R\$',realController, null),
-                     Divider(),
-                     buildTextField('Dolares','US\$',dolarController,null),
-                     Divider(),
-                     buildTextField('Euros','€',euroController,null),
-                   ],
-                 ),
-                );
-              }
-             }
-        },
+              ]
+            ),
+            ),
+          body: DefaultTextStyle.merge(
+            style: TextStyle(
+              color: Colors.amber,
+              fontSize: 25,
+              decoration: TextDecoration.none
+               ),
+            textAlign: TextAlign.center,
+            child: FutureBuilder<Map>(
+              future: dados,
+              builder: (context, snapshot){
+                switch(snapshot.connectionState){
+                  case ConnectionState.none:
+                  case ConnectionState.waiting:
+                 return Center(child: Text('Carregando dados...'));
+                  default:
+                    if(snapshot.hasError) {
+                      return Center(child: Text('Erro ao carregar dados...'));
+                    }else{
+                      dolar = snapshot.data['results']['currencies']['USD']['buy'];
+                      euro = snapshot.data['results']['currencies']['EUR']['buy'];
+
+                      return SingleChildScrollView(
+                       padding: EdgeInsets.all(10),
+                       child: Column(
+                         crossAxisAlignment: CrossAxisAlignment.stretch,
+                         children: <Widget>[
+                           buildTextField('Reais','R\$',realController, realChanged),
+                           SizedBox(height: 16),
+                           buildTextField('Dolares','US\$',dolarController,dolarChanged),
+                           SizedBox(height: 16),
+                           buildTextField('Euros','€',euroController,euroChanged),
+                         ],
+                       ),
+                      );
+                    }
+                   }
+              },
+            ),
+          ),
+        ),
       ),
     );
   }
